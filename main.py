@@ -1,4 +1,5 @@
 import os
+import re
 import asyncio
 import threading
 from flask import Flask
@@ -7,7 +8,6 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 
 app_web = Flask(__name__)
 
-# Cron-job এর জন্য ক্লিন রেসপন্স
 @app_web.route('/')
 def home():
     return "OK", 200
@@ -21,33 +21,41 @@ TOKEN = os.getenv("BOT_TOKEN")
 # মেইন চ্যানেল আইডি
 SOURCE_CHANNEL_ID = -1001868030606
 
-# মেইন চ্যানেলের অরিজিনাল লিংক যা রিপ্লেস হবে
-TARGET_OLD_LINK = "https://t.me/BigBagSmartMoney"
+# মেইন চ্যানেলের ইউজারনেম (যেকোনো লিংকের প্যাটার্ন ম্যাচ করার জন্য)
+OLD_USERNAME = "BigBagSmartMoney"
 
-# আপনার মোট ৪টি টার্গেট চ্যানেল এবং কাস্টম অ্যাডমিন লিংক
+# আপনার ৪টি টার্গেট চ্যানেল এবং সেগুলোর কাস্টম অ্যাডমিন লিংক
 DESTINATION_CONFIG = [
     {
-        "group_id": -1002395561078, 
+        "group_id": -1002395561078,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -1003310252089, 
+        "group_id": -1003310252089,
         "new_link": "https://t.me/KhalidAl_Ameen"
     },
     {
-        "group_id": -1003028410733, 
+        "group_id": -1003028410733,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        # নতুন যুক্ত হওয়া চ্যানেল (Global Link)
-        "group_id": -100239556107,  # আইডি নিশ্চিত হয়ে প্রয়োজন হলে এডিট করুন
+        "group_id": -100239556107,
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
 
 media_groups_cache = {}
 
-def modify_reply_markup(markup, old_link, new_link):
+# ডায়নামিক লিংক রিপ্লেসমেন্ট ফাংশন (যেকোনো ফরম্যাটের মেইন লিংক বদলে দেবে)
+def replace_all_old_links(text, new_link):
+    if not text:
+        return text
+    # https://t.me/BigBagSmartMoney, t.me/BigBagSmartMoney, @BigBagSmartMoney সব টাইপের লিংক ক্যাচ করবে
+    pattern = re.compile(rf'(https?://)?(www\.)?t\.me/{OLD_USERNAME}(/\S*)?|@{OLD_USERNAME}', re.IGNORECASE)
+    return pattern.sub(new_link, text)
+
+# ইনলাইন বাটনের লিংক পরিবর্তন
+def modify_reply_markup(markup, new_link):
     if not markup:
         return None
     new_keyboard = []
@@ -55,8 +63,8 @@ def modify_reply_markup(markup, old_link, new_link):
         new_row = []
         for btn in row:
             url = btn.url
-            if url and old_link in url:
-                url = url.replace(old_link, new_link)
+            if url:
+                url = replace_all_old_links(url, new_link)
             new_row.append(InlineKeyboardButton(text=btn.text, url=url, callback_data=btn.callback_data))
         new_keyboard.append(new_row)
     return InlineKeyboardMarkup(new_keyboard)
@@ -78,7 +86,7 @@ async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
             caption_text = ""
             if i == 0:
                 orig_html = msg.caption_html or ""
-                caption_text = orig_html.replace(TARGET_OLD_LINK, custom_link)
+                caption_text = replace_all_old_links(orig_html, custom_link)
 
             if msg.photo:
                 media_list.append(InputMediaPhoto(media=msg.photo[-1].file_id, caption=caption_text, parse_mode='HTML'))
@@ -95,6 +103,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
     msg = update.channel_post
     if msg and msg.chat.id == SOURCE_CHANNEL_ID:
         
+        # একাধিক মিডিয়া (অ্যালবাম) হলে
         if msg.media_group_id:
             mg_id = msg.media_group_id
             if mg_id not in media_groups_cache:
@@ -103,14 +112,15 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
             media_groups_cache[mg_id].append(msg)
             return
 
+        # সাধারণ মেসেজ বা সিঙ্গেল মিডিয়া হলে
         original_html = msg.text_html or msg.caption_html or ""
 
         for config in DESTINATION_CONFIG:
             group_id = config["group_id"]
             custom_link = config["new_link"]
             
-            modified_text = original_html.replace(TARGET_OLD_LINK, custom_link)
-            modified_markup = modify_reply_markup(msg.reply_markup, TARGET_OLD_LINK, custom_link)
+            modified_text = replace_all_old_links(original_html, custom_link)
+            modified_markup = modify_reply_markup(msg.reply_markup, custom_link)
 
             try:
                 if msg.photo:
@@ -132,3 +142,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+        
