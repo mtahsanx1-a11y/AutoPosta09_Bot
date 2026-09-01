@@ -39,7 +39,7 @@ DESTINATION_CONFIG = [
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -100239556107,
+        "group_id": -1002749561168,
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
