@@ -7,9 +7,10 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 
 app_web = Flask(__name__)
 
+# Cron-job এর জন্য ক্লিন রেসপন্স
 @app_web.route('/')
 def home():
-    return "Bot is running live on Render Web Service!"
+    return "OK", 200
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -20,32 +21,32 @@ TOKEN = os.getenv("BOT_TOKEN")
 # মেইন চ্যানেল আইডি
 SOURCE_CHANNEL_ID = -1001868030606
 
-# মেইন চ্যানেলের পোস্টে থাকা অরিজিনাল অ্যাডমিন লিংক (যা রিপ্লেস হবে)
+# মেইন চ্যানেলের অরিজিনাল লিংক যা রিপ্লেস হবে
 TARGET_OLD_LINK = "https://t.me/BigBagSmartMoney"
 
-# টার্গেট চ্যানেল এবং সেগুলোর কাস্টম অ্যাডমিন লিংক (নতুন চ্যানেলসহ মোট ৪টি টার্গেট চ্যানেল)
+# আপনার মোট ৪টি টার্গেট চ্যানেল এবং কাস্টম অ্যাডমিন লিংক
 DESTINATION_CONFIG = [
     {
-        "group_id": -1002395561078,  # Channel 2
+        "group_id": -1002395561078, 
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -1003310252089,  # Channel 3
+        "group_id": -1003310252089, 
         "new_link": "https://t.me/KhalidAl_Ameen"
     },
     {
-        "group_id": -1003028410733,  # Channel 4
+        "group_id": -1003028410733, 
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -1002749561168,  # নতুন চ্যানেল Global Link (আইডি ভিন্ন হলে সেটি বসাবেন)
+        # নতুন যুক্ত হওয়া চ্যানেল (Global Link)
+        "group_id": -100239556107,  # আইডি নিশ্চিত হয়ে প্রয়োজন হলে এডিট করুন
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
 
 media_groups_cache = {}
 
-# ইনলাইন বাটনের লিংক পরিবর্তনের লজিক
 def modify_reply_markup(markup, old_link, new_link):
     if not markup:
         return None
@@ -60,9 +61,8 @@ def modify_reply_markup(markup, old_link, new_link):
         new_keyboard.append(new_row)
     return InlineKeyboardMarkup(new_keyboard)
 
-# অ্যালবামের সব ছবি/ভিডিও একসাথে ৩ সেকেন্ড পর রিপোস্ট করার লজিক
 async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
-    await asyncio.sleep(3)  # অ্যালবামের সব ছবি আসা পর্যন্ত ৩ সেকেন্ড অপেক্ষা
+    await asyncio.sleep(3)
     messages = media_groups_cache.pop(mg_id, [])
     if not messages:
         return
@@ -76,7 +76,7 @@ async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
         media_list = []
         for i, msg in enumerate(messages):
             caption_text = ""
-            if i == 0:  # শুধু প্রথম ছবিতে ক্যাপশন থাকবে
+            if i == 0:
                 orig_html = msg.caption_html or ""
                 caption_text = orig_html.replace(TARGET_OLD_LINK, custom_link)
 
@@ -95,7 +95,6 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
     msg = update.channel_post
     if msg and msg.chat.id == SOURCE_CHANNEL_ID:
         
-        # একাধিক মিডিয়া (অ্যালবাম) হলে
         if msg.media_group_id:
             mg_id = msg.media_group_id
             if mg_id not in media_groups_cache:
@@ -104,7 +103,6 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
             media_groups_cache[mg_id].append(msg)
             return
 
-        # একক টেক্সট বা সিঙ্গেল ছবি/ভিডিও হলে
         original_html = msg.text_html or msg.caption_html or ""
 
         for config in DESTINATION_CONFIG:
@@ -126,12 +124,10 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
 
 def main():
     if not TOKEN:
-        print("BOT_TOKEN missing!")
         return
     threading.Thread(target=run_flask, daemon=True).start()
     bot_app = ApplicationBuilder().token(TOKEN).build()
     bot_app.add_handler(MessageHandler(filters.Chat(SOURCE_CHANNEL_ID), auto_repost_with_custom_links))
-    print("Auto-Repost Bot updated and running...")
     bot_app.run_polling()
 
 if __name__ == "__main__":
