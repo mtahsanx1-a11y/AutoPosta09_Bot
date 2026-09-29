@@ -8,6 +8,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 
 app_web = Flask(__name__)
 
+# Cron-job এর জন্য ক্লিন রেসপন্স
 @app_web.route('/')
 def home():
     return "OK", 200
@@ -24,7 +25,7 @@ SOURCE_CHANNEL_ID = -1001868030606
 # মেইন চ্যানেলের ইউজারনেম (যেকোনো লিংকের প্যাটার্ন ম্যাচ করার জন্য)
 OLD_USERNAME = "BigBagSmartMoney"
 
-# আপনার ৪টি টার্গেট চ্যানেল এবং সেগুলোর কাস্টম অ্যাডমিন লিংক
+# আপনার ৫টি টার্গেট চ্যানেল এবং সেগুলোর কাস্টম অ্যাডমিন লিংক
 DESTINATION_CONFIG = [
     {
         "group_id": -1002395561078,
@@ -39,18 +40,22 @@ DESTINATION_CONFIG = [
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -1002749561168,
+        "group_id": -100239556107,
+        "new_link": "https://t.me/ForexGlobal_support"
+    },
+    {
+        # নতুন ৫ম চ্যানেল
+        "group_id": -1003784053762,
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
 
 media_groups_cache = {}
 
-# ডায়নামিক লিংক রিপ্লেসমেন্ট ফাংশন (যেকোনো ফরম্যাটের মেইন লিংক বদলে দেবে)
+# ডায়নামিক লিংক রিপ্লেসমেন্ট ফাংশন
 def replace_all_old_links(text, new_link):
     if not text:
         return text
-    # https://t.me/BigBagSmartMoney, t.me/BigBagSmartMoney, @BigBagSmartMoney সব টাইপের লিংক ক্যাচ করবে
     pattern = re.compile(rf'(https?://)?(www\.)?t\.me/{OLD_USERNAME}(/\S*)?|@{OLD_USERNAME}', re.IGNORECASE)
     return pattern.sub(new_link, text)
 
@@ -103,7 +108,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
     msg = update.channel_post
     if msg and msg.chat.id == SOURCE_CHANNEL_ID:
         
-        # একাধিক মিডিয়া (অ্যালবাম) হলে
+        # অ্যালবামের জন্য
         if msg.media_group_id:
             mg_id = msg.media_group_id
             if mg_id not in media_groups_cache:
@@ -112,7 +117,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
             media_groups_cache[mg_id].append(msg)
             return
 
-        # সাধারণ মেসেজ বা সিঙ্গেল মিডিয়া হলে
+        # সাধারণ মেসেজ বা সিঙ্গেল মিডিয়া
         original_html = msg.text_html or msg.caption_html or ""
 
         for config in DESTINATION_CONFIG:
@@ -142,4 +147,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+    
