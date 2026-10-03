@@ -46,7 +46,7 @@ DESTINATION_CONFIG = [
     {
         # নতুন ৫ম চ্যানেল
         "group_id": -1003784053762,
-        "new_link": "https://t.me/VALTREX_TRADING"
+        "new_link": "https://t.me/Valtrex_Trading_Service"
     }
 ]
 
