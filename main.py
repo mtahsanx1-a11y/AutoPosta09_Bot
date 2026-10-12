@@ -22,31 +22,31 @@ TOKEN = os.getenv("BOT_TOKEN")
 # মেইন চ্যানেল আইডি
 SOURCE_CHANNEL_ID = -1001868030606
 
-# মেইন চ্যানেলের ইউজারনেম (যেকোনো লিংকের প্যাটার্ন ম্যাচ করার জন্য)
+# মেইন চ্যানেলের ইউজারনেম
 OLD_USERNAME = "BigBagSmartMoney"
 
-# আপনার ৫টি টার্গেট চ্যানেল এবং সেগুলোর কাস্টম অ্যাডমিন লিংক
+# আপনার টার্গেট চ্যানেল ও গ্রুপগুলোর কনফিগারেশন
 DESTINATION_CONFIG = [
     {
-        "group_id": -1002395561078,
+        "chat_id": -1002395561078,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -1003310252089,
+        "chat_id": -1003310252089,
         "new_link": "https://t.me/KhalidAl_Ameen"
     },
     {
-        "group_id": -1003028410733,
+        "chat_id": -1003028410733,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "group_id": -100239556107,
+        "chat_id": -100239556107,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        # নতুন ৫ম চ্যানেল
-        "group_id": -1003784053762,
-        "new_link": "https://t.me/Valtrex_Trading_Service"
+        # নতুন যুক্ত হওয়া গ্রুপ (আইডি: -1003784053762)
+        "chat_id": -1003784053762,
+        "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
 
@@ -83,7 +83,7 @@ async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
     messages.sort(key=lambda x: x.message_id)
 
     for config in DESTINATION_CONFIG:
-        group_id = config["group_id"]
+        chat_id = config["chat_id"]
         custom_link = config["new_link"]
         
         media_list = []
@@ -100,9 +100,9 @@ async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             if media_list:
-                await context.bot.send_media_group(chat_id=group_id, media=media_list)
+                await context.bot.send_media_group(chat_id=chat_id, media=media_list)
         except Exception as e:
-            print(f"Failed to post album in {group_id}: {e}")
+            print(f"Failed to post album in {chat_id}: {e}")
 
 async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.channel_post
@@ -121,7 +121,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
         original_html = msg.text_html or msg.caption_html or ""
 
         for config in DESTINATION_CONFIG:
-            group_id = config["group_id"]
+            chat_id = config["chat_id"]
             custom_link = config["new_link"]
             
             modified_text = replace_all_old_links(original_html, custom_link)
@@ -129,13 +129,13 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
 
             try:
                 if msg.photo:
-                    await context.bot.send_photo(chat_id=group_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    await context.bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
                 elif msg.video:
-                    await context.bot.send_video(chat_id=group_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    await context.bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
                 else:
-                    await context.bot.send_message(chat_id=group_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    await context.bot.send_message(chat_id=chat_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
             except Exception as e:
-                print(f"Failed to post in {group_id}: {e}")
+                print(f"Failed to post in {chat_id}: {e}")
 
 def main():
     if not TOKEN:
@@ -147,4 +147,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
