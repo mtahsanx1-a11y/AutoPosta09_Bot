@@ -28,7 +28,7 @@ OLD_USERNAME = "BigBagSmartMoney"
 # আপনার টার্গেট চ্যানেল ও গ্রুপগুলোর কনফিগারেশন
 DESTINATION_CONFIG = [
     {
-        "chat_id": -1002395561078,
+        "chat_id": -8960880627,
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
