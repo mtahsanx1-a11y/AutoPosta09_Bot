@@ -72,35 +72,40 @@ def modify_reply_markup(markup, new_link):
 
 async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.channel_post
-    if msg and msg.chat.id == SOURCE_CHANNEL_ID:
-        print(f"New post detected in Source Channel! Processing destinations...")
-        
-        original_html = msg.text_html or msg.caption_html or ""
-
-        for config in DESTINATION_CONFIG:
-            chat_id = config["chat_id"]
-            custom_link = config["new_link"]
+    if msg:
+        print(f"Incoming message from chat ID: {msg.chat.id}")
+        if msg.chat.id == SOURCE_CHANNEL_ID:
+            print("SUCCESS: Post detected from Source Channel!")
             
-            modified_text = replace_all_old_links(original_html, custom_link)
-            modified_markup = modify_reply_markup(msg.reply_markup, custom_link)
+            original_html = msg.text_html or msg.caption_html or ""
 
-            try:
-                if msg.photo:
-                    await context.bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                elif msg.video:
-                    await context.bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                else:
-                    await context.bot.send_message(chat_id=chat_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                print(f"SUCCESS: Successfully posted to chat_id: {chat_id}")
-            except Exception as e:
-                print(f"ERROR: Failed to post in chat_id {chat_id} -> {e}")
+            for config in DESTINATION_CONFIG:
+                chat_id = config["chat_id"]
+                custom_link = config["new_link"]
+                
+                modified_text = replace_all_old_links(original_html, custom_link)
+                modified_markup = modify_reply_markup(msg.reply_markup, custom_link)
+
+                try:
+                    if msg.photo:
+                        await context.bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    elif msg.video:
+                        await context.bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    else:
+                        await context.bot.send_message(chat_id=chat_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                    print(f"SUCCESS: Successfully posted to chat_id: {chat_id}")
+                except Exception as e:
+                    print(f"CRITICAL ERROR in chat_id {chat_id}: {e}")
 
 def main():
     if not TOKEN:
         return
     threading.Thread(target=run_flask, daemon=True).start()
     bot_app = ApplicationBuilder().token(TOKEN).build()
-    bot_app.add_handler(MessageHandler(filters.Chat(SOURCE_CHANNEL_ID), auto_repost_with_custom_links))
+    
+    # যেকোনো চ্যানেল পোস্ট বা চ্যাট আপডেট ট্র্যাক করার জন্য জেনারেল হ্যান্ডেলার
+    bot_app.add_handler(MessageHandler(filters.ALL, auto_repost_with_custom_links))
+    
     bot_app.run_polling()
 
 if __name__ == "__main__":
