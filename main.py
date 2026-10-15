@@ -43,7 +43,7 @@ DESTINATION_CONFIG = [
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "chat_id": -1003784053762,  # আপনার কাঙ্ক্ষিত গ্রুপ আইডি
+        "chat_id": -1003784053762,  # গ্রুপ আইডি
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
@@ -70,44 +70,81 @@ def modify_reply_markup(markup, new_link):
         new_keyboard.append(new_row)
     return InlineKeyboardMarkup(new_keyboard)
 
+# একসাথে আসা একাধিক ছবি বা ভিডিও (অ্যালবাম) সঠিকভাবে প্রসেস করার ফাংশন
+async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
+    # সব কয়টি ছবি একসাথে ক্যাশ হতে ৩ সেকেন্ড সময় দেওয়া হচ্ছে
+    await asyncio.sleep(3)
+    messages = media_groups_cache.pop(mg_id, [])
+    if not messages:
+        return
+
+    # ম্যাসেজ আইডি অনুযায়ী সিরিয়াল সাজানো
+    messages.sort(key=lambda x: x.message_id)
+
+    for config in DESTINATION_CONFIG:
+        chat_id = config["chat_id"]
+        custom_link = config["new_link"]
+        
+        media_list = []
+        for i, msg in enumerate(messages):
+            caption_text = ""
+            if i == 0:
+                orig_html = msg.caption_html or ""
+                caption_text = replace_all_old_links(orig_html, custom_link)
+
+            if msg.photo:
+                media_list.append(InputMediaPhoto(media=msg.photo[-1].file_id, caption=caption_text, parse_mode='HTML'))
+            elif msg.video:
+                media_list.append(InputMediaVideo(media=msg.video.file_id, caption=caption_text, parse_mode='HTML'))
+
+        try:
+            if media_list:
+                await context.bot.send_media_group(chat_id=chat_id, media=media_list)
+                print(f"SUCCESS: Media album successfully posted to chat_id: {chat_id}")
+        except Exception as e:
+            print(f"ERROR: Failed to post media album in chat_id {chat_id} -> {e}")
+
 async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.channel_post
-    if msg:
-        print(f"Incoming message from chat ID: {msg.chat.id}")
-        if msg.chat.id == SOURCE_CHANNEL_ID:
-            print("SUCCESS: Post detected from Source Channel!")
+    if msg and msg.chat.id == SOURCE_CHANNEL_ID:
+        
+        # যদি পোস্টটি একাধিক ছবি বা ভিডিওর অ্যালবাম হয়
+        if msg.media_group_id:
+            mg_id = msg.media_group_id
+            if mg_id not in media_groups_cache:
+                media_groups_cache[mg_id] = []
+                asyncio.create_task(process_media_group(mg_id, context))
+            media_groups_cache[mg_id].append(msg)
+            return
+
+        # সাধারণ টেক্সট, সিঙ্গেল ছবি বা ভিডিওর জন্য
+        original_html = msg.text_html or msg.caption_html or ""
+
+        for config in DESTINATION_CONFIG:
+            chat_id = config["chat_id"]
+            custom_link = config["new_link"]
             
-            original_html = msg.text_html or msg.caption_html or ""
+            modified_text = replace_all_old_links(original_html, custom_link)
+            modified_markup = modify_reply_markup(msg.reply_markup, custom_link)
 
-            for config in DESTINATION_CONFIG:
-                chat_id = config["chat_id"]
-                custom_link = config["new_link"]
-                
-                modified_text = replace_all_old_links(original_html, custom_link)
-                modified_markup = modify_reply_markup(msg.reply_markup, custom_link)
-
-                try:
-                    if msg.photo:
-                        await context.bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                    elif msg.video:
-                        await context.bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                    else:
-                        await context.bot.send_message(chat_id=chat_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
-                    print(f"SUCCESS: Successfully posted to chat_id: {chat_id}")
-                except Exception as e:
-                    print(f"CRITICAL ERROR in chat_id {chat_id}: {e}")
+            try:
+                if msg.photo:
+                    await context.bot.send_photo(chat_id=chat_id, photo=msg.photo[-1].file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                elif msg.video:
+                    await context.bot.send_video(chat_id=chat_id, video=msg.video.file_id, caption=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                else:
+                    await context.bot.send_message(chat_id=chat_id, text=modified_text, parse_mode='HTML', reply_markup=modified_markup)
+                print(f"SUCCESS: Successfully posted to chat_id: {chat_id}")
+            except Exception as e:
+                print(f"ERROR: Failed to post in chat_id {chat_id} -> {e}")
 
 def main():
     if not TOKEN:
         return
     threading.Thread(target=run_flask, daemon=True).start()
     bot_app = ApplicationBuilder().token(TOKEN).build()
-    
-    # যেকোনো চ্যানেল পোস্ট বা চ্যাট আপডেট ট্র্যাক করার জন্য জেনারেল হ্যান্ডেলার
-    bot_app.add_handler(MessageHandler(filters.ALL, auto_repost_with_custom_links))
-    
+    bot_app.add_handler(MessageHandler(filters.Chat(SOURCE_CHANNEL_ID), auto_repost_with_custom_links))
     bot_app.run_polling()
 
 if __name__ == "__main__":
     main()
-    
