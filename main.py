@@ -43,7 +43,7 @@ DESTINATION_CONFIG = [
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "chat_id": -1003784053762,  # গ্রুপ আইডি
+        "chat_id": -1002749561168,  # গ্রুপ আইডি
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
