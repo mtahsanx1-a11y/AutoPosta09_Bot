@@ -18,32 +18,28 @@ def run_flask():
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-# মেইন চ্যানেল আইডি
+# মেইন সোর্স চ্যানেল আইডি
 SOURCE_CHANNEL_ID = -1001868030606
 
-# মেইন চ্যানেলের ইউজারনেম
+# মেইন চ্যানেলের পুরনো ইউজারনেম যা প্রতিস্থাপিত হবে
 OLD_USERNAME = "BigBagSmartMoney"
 
-# আপনার টার্গেট চ্যানেল ও গ্রুপগুলোর তালিকা
+# আপনার দেওয়া সঠিক কনফিগারেশন তালিকা (চ্যানেল ও গ্রুপ)
 DESTINATION_CONFIG = [
     {
-        "chat_id": -1002395561078,
+        "chat_id": -1002395561078,  # AutoPost Channel 2
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "chat_id": -1003310252089,
+        "chat_id": -1003310252089,  # Autopost Channel 3
         "new_link": "https://t.me/KhalidAl_Ameen"
     },
     {
-        "chat_id": -1003028410733,
+        "chat_id": -1003028410733,  # Autopost Channel 4
         "new_link": "https://t.me/ForexGlobal_support"
     },
     {
-        "chat_id": -100239556107,
-        "new_link": "https://t.me/ForexGlobal_support"
-    },
-    {
-        "chat_id": -1002749561168,  # গ্রুপ আইডি
+        "chat_id": -1002749561168,  # Autopost Group 5 (globallinkkh)
         "new_link": "https://t.me/ForexGlobal_support"
     }
 ]
@@ -72,13 +68,11 @@ def modify_reply_markup(markup, new_link):
 
 # একসাথে আসা একাধিক ছবি বা ভিডিও (অ্যালবাম) সঠিকভাবে প্রসেস করার ফাংশন
 async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
-    # সব কয়টি ছবি একসাথে ক্যাশ হতে ৩ সেকেন্ড সময় দেওয়া হচ্ছে
     await asyncio.sleep(3)
     messages = media_groups_cache.pop(mg_id, [])
     if not messages:
         return
 
-    # ম্যাসেজ আইডি অনুযায়ী সিরিয়াল সাজানো
     messages.sort(key=lambda x: x.message_id)
 
     for config in DESTINATION_CONFIG:
@@ -100,7 +94,7 @@ async def process_media_group(mg_id, context: ContextTypes.DEFAULT_TYPE):
         try:
             if media_list:
                 await context.bot.send_media_group(chat_id=chat_id, media=media_list)
-                print(f"SUCCESS: Media album successfully posted to chat_id: {chat_id}")
+                print(f"SUCCESS: Media album posted to chat_id: {chat_id}")
         except Exception as e:
             print(f"ERROR: Failed to post media album in chat_id {chat_id} -> {e}")
 
@@ -108,7 +102,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
     msg = update.channel_post
     if msg and msg.chat.id == SOURCE_CHANNEL_ID:
         
-        # যদি পোস্টটি একাধিক ছবি বা ভিডিওর অ্যালবাম হয়
+        # যদি পোস্টটি অ্যালবাম বা একাধিক মিডিয়ার হয়
         if msg.media_group_id:
             mg_id = msg.media_group_id
             if mg_id not in media_groups_cache:
@@ -117,7 +111,7 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
             media_groups_cache[mg_id].append(msg)
             return
 
-        # সাধারণ টেক্সট, সিঙ্গেল ছবি বা ভিডিওর জন্য
+        # সাধারণ টেক্সট বা সিঙ্গেল মিডিয়া পোস্টের জন্য
         original_html = msg.text_html or msg.caption_html or ""
 
         for config in DESTINATION_CONFIG:
@@ -148,3 +142,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+        
