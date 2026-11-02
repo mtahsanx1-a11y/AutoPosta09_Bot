@@ -6,16 +6,18 @@ from flask import Flask
 from telegram import Update, InputMediaPhoto, InputMediaVideo, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
+# ফ্লাস্ক অ্যাপ ইনিশিয়ালাইজেশন (রেন্ডার পোর্টের জন্য বাধ্যতামূলক)
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "OK", 200
+    return "Bot is running successfully!", 200
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_web.run(host='0.0.0.0', port=port)
 
+# এনভায়রনমেন্ট থেকে টোকেন নেওয়া
 TOKEN = os.getenv("BOT_TOKEN")
 
 # মেইন সোর্স চ্যানেল আইডি
@@ -134,12 +136,20 @@ async def auto_repost_with_custom_links(update: Update, context: ContextTypes.DE
 
 def main():
     if not TOKEN:
+        print("ERROR: BOT_TOKEN is missing!")
         return
+
+    # ফ্লাস্ক ওয়েব সার্ভার আলাদা থ্রেডে চালু করা (যাতে রেন্ডার পোর্ট ওপেন পায়)
     threading.Thread(target=run_flask, daemon=True).start()
+
+    # টেলিগ্রাম বট অ্যাপ বিল্ড ও হ্যান্ডলার যুক্ত করা
     bot_app = ApplicationBuilder().token(TOKEN).build()
     bot_app.add_handler(MessageHandler(filters.Chat(SOURCE_CHANNEL_ID), auto_repost_with_custom_links))
+
+    print("Bot is starting polling...")
+    # বট সচল রাখা
     bot_app.run_polling()
 
 if __name__ == "__main__":
     main()
-        
+               
